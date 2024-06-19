@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Find Federal Public Lands</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #FFFFFF;
+        }
+        h1 {
+            margin-top: 20px;
+            color: #333;
+            text-align: center;
+            font-size: 30px;
+        }
+        .button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            margin: 10px 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .button_dark {
+            background-color: #282E78;
+            color: white;
+            padding: 10px 20px;
+            margin: 10px 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .input-field {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 18px;
+        }
+        #result {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            font-size: 18px;
+        }
+        #map {
+            height: 50vh;
+            width: 100%;
+            max-width: 1500px;
+            margin: 20px 0;
+            border: 5px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        #color-key {
+            margin: 10px;
+            text-align: center;
+            width: 90%;
+            max-width: 600px;
+        }
+        #color-key div {
+            display: inline-block;
+            margin: 0 10px;
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        #color-key .spacer {
+            display: block;
+            width: 100%;
+            height: 20px; /* Adjust the height as needed */
+        }
+        #blm { background-color: #ff7f00; color: white; }
+        #bor { background-color: #ffff33; color: black; }
+        #dod { background-color: #e41a1c; color: white; }
+        #fws { background-color: #377eb8; color: white; }
+        #fs { background-color: #984ea3; color: white; }
+        #nps { background-color: #4daf4a; color: white; }
+        #disclaimer {
+            font-size: 12px;
+            font-style: italic;
+            text-align: center;
+            margin: 20px;
+            max-width: 600px;
+        }
+    </style>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/esri-leaflet/dist/esri-leaflet.js"></script>
+    <script>
+        var map;
+        var marker;
+        var federalLandsLayer;
+
+        function initMap() {
+            map = L.map('map').setView([40.014984, -105.270546], 8); // Default view centered on Boulder, CO
+
+            L.esri.basemapLayer('Topographic').addTo(map);
+
+            federalLandsLayer = L.esri.featureLayer({
+                url: 'https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/USA_Federal_Lands/FeatureServer/0',
+                style: function(feature) {
+                    switch (feature.properties.Agency) {
+                        case 'Bureau of Land Management': return { color: "#ff7f00", weight: 2 };
+                        case 'Bureau of Reclamation': return { color: "#ffff33", weight: 2 };
+                        case 'Department of Defense': return { color: "#e41a1c", weight: 2 };
+                        case 'Fish and Wildlife Service': return { color: "#377eb8", weight: 2 };
+                        case 'Forest Service': return { color: "#984ea3", weight: 2 };
+                        case 'National Park Service': return { color: "#4daf4a", weight: 2 };
+                    }
+                },
+                onEachFeature: function(feature, layer) {
+                    layer.bindPopup(
+                        `<strong>Agency:</strong> ${feature.properties.Agency}<br>
+                         <strong>Unit Name:</strong> ${feature.properties.unit_name}<br>
+                         <strong>Link:</strong> <a href="${feature.properties.link}" target="_blank">${feature.properties.link}</a>`
+                    );
+                }
+            }).addTo(map);
+        }
+
+        function updateMap(latitude, longitude) {
+            if (map) {
+                if (marker) {
+                    marker.setLatLng([latitude, longitude]);
+                } else {
+                    marker = L.marker([latitude, longitude]).addTo(map);
+                }
+                map.setView([latitude, longitude], 13);
+            }
+        }
+
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition, showError);
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        }
+
+        function showPosition(position) {
+            var latitude = position.coords.latitude;
+            var longitude = position.coords.longitude;
+            updateMap(latitude, longitude);
+            checkFederalLand(latitude, longitude);
+        }
+
+        function showError(error) {
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("User denied the request for Geolocation.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("Location information is unavailable.");
+                    break;
+                case error.TIMEOUT:
+                    alert("The request to get user location timed out.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("An unknown error occurred.");
+                    break;
+            }
+        }
+
+        function checkFederalLand(latitude, longitude) {
+            fetch(`/check_federal_land?latitude=${latitude}&longitude=${longitude}`)
+                .then(response => response.json())
+                .then(data => {
+                    var resultDiv = document.getElementById("result");
+                    if (data.on_federal_land) {
+                        resultDiv.innerHTML = `
+                            <strong>This location is on Federal public land managed by ${data.agency}.</strong><br>
+                            <strong>Unit Name:</strong> ${data.unit_name}<br>
+                            <strong>Link Code:</strong> <a href="${data.link_code}" target="_blank">${data.link_code}</a>
+                        `;
+                    } else {
+                        resultDiv.innerHTML = "<strong>This location is not on Federal public land*</strong>";
+                    }
+                    resultDiv.style.display = "block";
+                });
+        }
+
+        function submitCoordinates() {
+            var latitude = document.getElementById("latitude").value;
+            var longitude = document.getElementById("longitude").value;
+            if (latitude && longitude) {
+                updateMap(latitude, longitude);
+                checkFederalLand(latitude, longitude);
+            } else {
+                alert("Please enter both latitude and longitude.");
+            }
+        }
+
+        function resetCheck() {
+            document.getElementById("result").style.display = "none";
+            document.getElementById("latitude").value = "";
+            document.getElementById("longitude").value = "";
+            map.setView([40.014984, -105.270546], 8);
+            if (marker) {
+                map.removeLayer(marker);
+                marker = null;
+            }
+        }
+
+        window.onload = initMap;
+    </script>
+</head>
+<body>
+    <h1>Find American Federal Public Lands</h1>
+    <button class="button_dark" onclick="getLocation()">Get and Check My Location</button>
+    <br>
+    <div id="disclaimer">
+        OR INPUT
+    <input type="text" id="latitude" class="input-field" placeholder="Latitude">
+    <input type="text" id="longitude" class="input-field" placeholder="Longitude">
+    <button class="button" onclick="submitCoordinates()">Submit Coordinates</button>
+    <br>
+    <button class="button_dark" onclick="resetCheck()">Reset and Check New Location</button>
+    <div id="result"></div>
+    <div id="map"></div>
+    <div id="color-key">
+        <div id="blm">Bureau of Land Management</div>
+        <div id="bor">Bureau of Reclamation</div>
+        <div id="dod">Department of Defense</div>
+        <div class="spacer"></div>
+        <div id="fws">Fish and Wildlife Service</div>
+        <div id="fs">Forest Service</div>
+        <div id="nps">National Park Service</div>
+    </div>
+    <div id="disclaimer">
+    *This map displays Federal public lands administered by the six primary land administration agencies, comprising the vast majority of U.S. Federal public lands. Lands administered by other agencies (such as the USDA National Arboretum in DC, Federal office buildings, or U.S. Coast Guard stations) will not be displayed. This data should not be considered authoritative and should not be used for legal purposes.
+    </div>
