@@ -1,0 +1,230 @@
+---
+title: "NYPD Shooting Incidents Analysis"
+author: "Hayden Stone"
+date: "`r Sys.Date()`"
+output:
+  html_document: 
+    theme: flatly
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**#Import libraries**
+```{r import_libraries, echo=TRUE}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(knitr)
+library(maps)
+library(effects)
+```
+
+**#Load data**
+```{r read_in_data, echo=TRUE}
+data_url <- "https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv"
+nyc_data <- read_csv(data_url)
+```
+
+**#Remove Null Values For Key Variables**
+```{r geo_clean, echo=TRUE}
+nyc_data_filtered <- nyc_data %>% filter(!is.na(Latitude) & !is.na(Longitude))
+nyc_data_filtered <- nyc_data_filtered %>%
+  filter(!is.na(VIC_RACE) & VIC_RACE != "" & VIC_RACE != "NULL" & VIC_RACE != "(null)")
+nyc_data_filtered <- nyc_data_filtered %>%
+  filter(!is.na(PERP_RACE) & PERP_RACE != "" & PERP_RACE != "NULL"& PERP_RACE != "(null)")
+nyc_data_filtered <- nyc_data_filtered %>%
+  filter(!is.na(PERP_SEX) & PERP_SEX != "" & PERP_SEX != "NULL" & PERP_SEX != "(null)")
+nyc_data_filtered <- nyc_data_filtered %>%
+  filter(!is.na(VIC_SEX) & VIC_SEX != "" & VIC_SEX != "NULL" & VIC_SEX != "(null)")
+```
+
+**#Analysis A - Analyze Victim Sex vs Perpetrator Sex**
+```{r analyze_sex, echo=TRUE}
+#Create contingency table
+counts <- table(nyc_data_filtered$VIC_SEX, nyc_data_filtered$PERP_SEX)
+counts_df <- as.data.frame(counts)
+counts_df <- counts_df[counts_df$Freq > 0, ]
+
+#Make plot
+ggplot(counts_df, aes(Var1, Freq, fill = Var2)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Victim Sex", y = "Count", fill = "Perpetrator Sex") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
+```
+
+**#Analysis B - Analyze Race Dynamics**
+```{r analyze_race_bubbles, echo=TRUE}
+#Create contingency table
+counts <- table(nyc_data_filtered$VIC_RACE, nyc_data_filtered$PERP_RACE)
+counts_df <- as.data.frame(counts)
+counts_df <- counts_df[counts_df$Freq > 0, ]
+
+#Make plot
+ggplot(counts_df, aes(Var1, Var2, size = Freq)) +
+  geom_point(alpha = 0.7) +
+  scale_size_continuous(range = c(0, 10), 
+                        breaks = c(1000, 3000, 5000, 7000), 
+                        labels = c("1000", "3000", "5000", "7000"),
+                        guide = guide_legend(override.aes = list(alpha = .7))) +
+  labs(x = "Victim Race", y = "Perpetrator Race", size = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#Make Frequency Table
+vic_race_freq <- nyc_data_filtered %>%
+  group_by(VIC_RACE) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = (count / sum(count)) * 100) %>%
+  arrange(desc(percentage)) 
+print(vic_race_freq)
+
+```
+
+**#Analysis C - Analyze Boro vs Victim Race**
+```{r analyze_boro, echo=TRUE}
+#Create contingency table
+counts <- table(nyc_data_filtered$BORO, nyc_data_filtered$VIC_RACE)
+counts_df <- as.data.frame(counts)
+counts_df <- counts_df[counts_df$Freq > 0, ]
+
+#Make plot
+ggplot(counts_df, aes(Var1, Freq, fill = Var2)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Boro", y = "Count", fill = "Victim Race") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5),
+        legend.text = element_text(size = 5),
+        legend.title = element_text(size = 7),
+        legend.key.size = unit(0.4, "cm"))
+```
+
+**#Make Base Maps**
+```{r get_base_maps, echo=TRUE}
+# Get the base map of NYC
+nyc_counties <- c("new york", "kings", "queens", "bronx", "richmond")
+nyc_map <- map_data("county", region = "new york") %>%
+  filter(subregion %in% nyc_counties)
+```
+
+**#Analysis D - Map Black Victims**
+```{r make_black_victim_map, echo=TRUE}
+#Filter data
+nyc_data_filtered_murder <- subset(nyc_data_filtered,VIC_RACE == "BLACK")
+
+#Make map
+ggplot() +
+  geom_polygon(data = nyc_map, aes(x = long, y = lat, group = group), fill = "gray80", color = "white") +
+  geom_point(data = nyc_data_filtered_murder, aes(x = Longitude, y = Latitude), alpha = 1, size = .2) +
+  coord_quickmap() +
+  labs(title = "Black Victims in NYC", x = "Longitude", y = "Latitude", color = "Black Victim") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5),
+        legend.text = element_text(size = 5),
+        legend.title = element_text(size = 7),
+        legend.key.size = unit(0.4, "cm"))
+```
+
+**#Analysis E - Map White Hispanic Victims**
+```{r make_white_hispanic_victim_map, echo=TRUE}
+
+#Filter data
+nyc_data_filtered_murder <- subset(nyc_data_filtered,VIC_RACE == "WHITE HISPANIC")
+
+#Make map
+ggplot() +
+  geom_polygon(data = nyc_map, aes(x = long, y = lat, group = group), fill = "gray80", color = "white") +
+  geom_point(data = nyc_data_filtered_murder, aes(x = Longitude, y = Latitude), alpha = 1, size = .2) +
+  coord_quickmap() +
+  labs(title = "White Hispanic Victims in NYC", x = "Longitude", y = "Latitude", color = "White Hispanic Victim") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5),
+        legend.text = element_text(size = 5),
+        legend.title = element_text(size = 7),
+        legend.key.size = unit(0.4, "cm"))
+```
+
+**#Analysis F - Analyze "Same Race" Dynamics**
+
+```{r same_race_analysis, echo=TRUE}
+#Create new SAME_RACE variable for records where VIC_RACE == PERP_RACE
+nyc_data_filtered <- nyc_data_filtered %>%
+  mutate(SAME_RACE = VIC_RACE == PERP_RACE)
+
+#Calculate percentages
+shares_df <- nyc_data_filtered %>%
+  group_by(SAME_RACE) %>%
+  summarise(
+    total_shootings = n()
+  ) %>%
+  mutate(Share = total_shootings / sum(total_shootings) * 100,
+         Share_Label = paste0(round(Share, 0), "%"))
+
+#Make plot
+ggplot(shares_df, aes(x = "", y = Share, fill = as.factor(SAME_RACE))) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  geom_text(aes(label = Share_Label), position = position_stack(vjust = 0.5), data = shares_df) +
+  labs(x = NULL, y = NULL, fill = "Same Race", title = "Share of Shootings by Same Race") +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(), axis.ticks = element_blank())
+```
+
+**#Analysis G - Analyze "Same Race" Dynamics for Shootings Resulting in Murder**
+
+```{r same_race_murder_analysis, echo=TRUE}
+
+#Logical variable transformation
+nyc_data_filtered <- nyc_data_filtered %>%
+  mutate(SAME_RACE = as.logical(SAME_RACE),
+         STATISTICAL_MURDER_FLAG = as.logical(STATISTICAL_MURDER_FLAG))
+
+#Calculate percentages
+shares_df <- nyc_data_filtered %>%
+  group_by(SAME_RACE) %>%
+  summarise(
+    total_shootings = n(),
+    murders = sum(STATISTICAL_MURDER_FLAG == TRUE),
+    non_murders = total_shootings - murders
+  ) %>%
+  gather(key = "Outcome", value = "Count", murders, non_murders) %>%
+  mutate(Share = Count / total_shootings * 100,
+         Share_Label = paste0(round(Share, 0), "%"))
+
+#Make plot
+ggplot(shares_df, aes(x = "", y = Share, fill = Outcome)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  facet_wrap(~ SAME_RACE) +
+  geom_text(aes(label = Share_Label), position = position_stack(vjust = 0.5), data = shares_df) +
+  labs(x = NULL, y = NULL, fill = "Outcome", title = "Share of Shootings Resulting in Murders by Same Race") +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(), axis.ticks = element_blank())
+```
+
+**# Analysis H - Model Same Race as a Predictor for Shooting Resulting in a Murder**
+
+```{r create_model, echo=TRUE}
+
+#Create model
+model <- glm(STATISTICAL_MURDER_FLAG ~ SAME_RACE, data = nyc_data_filtered, family = binomial)
+
+#Summarize model
+summary(model)
+```
+
+**#Conclusion and Potential Biases**
+
+This dataset reveals some interesting patterns in reported shooting incidents in New York City that may suggest some of the underlying dynamics.
+
+Probably the most significant finding of this analysis is that there appears to be a strong intra-racial dyanmic driving most of the shooting incidents in NYC. Black and Hispanic New Yorkers comprise over 95% of the shooting victims in this dataset (analysis B), and 61% of shootings were found to involve both perpetrators and victims of the same race (analysis F). Additionally, using these "same race" records as a predictor variable, modeling found that shooting incidents involving both perpetrators and victims of the same race were much more likely to result in murder (approx 24% more likely, with high statistical significance - analyses F and G). This could indicate that many of these incidents are targeted shootings among common social and ethnic groups, as opposed to random gunfire or other crimes involving guns which may be less likely to result in murder. Additionaly, Men in NYC are much more likely to be both the victim and perpetrator of a shooting incident in NYC, though there are still many female victims of male perpetrators (analysis A). 
+
+
+**#Session Info**
+```{r sessioninfo, echo=TRUE}
+sessionInfo()
+```
