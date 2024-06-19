@@ -217,12 +217,6 @@ model <- glm(STATISTICAL_MURDER_FLAG ~ SAME_RACE, data = nyc_data_filtered, fami
 summary(model)
 ```
 
-**#Conclusion and Potential Biases**
-
-This dataset reveals some interesting patterns in reported shooting incidents in New York City that may suggest some of the underlying dynamics.
-
-Probably the most significant finding of this analysis is that there appears to be a strong intra-racial dyanmic driving most of the shooting incidents in NYC. Black and Hispanic New Yorkers comprise over 95% of the shooting victims in this dataset (analysis B), and 61% of shootings were found to involve both perpetrators and victims of the same race (analysis F). Additionally, using these "same race" records as a predictor variable, modeling found that shooting incidents involving both perpetrators and victims of the same race were much more likely to result in murder (approx 24% more likely, with high statistical significance - analyses F and G). This could indicate that many of these incidents are targeted shootings among common social and ethnic groups, as opposed to random gunfire or other crimes involving guns which may be less likely to result in murder. Additionaly, Men in NYC are much more likely to be both the victim and perpetrator of a shooting incident in NYC, though there are still many female victims of male perpetrators (analysis A). 
-
 
 **#Session Info**
 ```{r sessioninfo, echo=TRUE}
