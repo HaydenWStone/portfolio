@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Here are some good spots!</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			background-color: #f2f2f2;
+		}
+		h1 {
+			text-align: center;
+			color: #333;
+		}
+		#map {
+			height: 400px;
+			width: 100%;
+			margin-bottom: 20px;
+		}
+		ul {
+			list-style: none;
+			padding: 0;
+			margin: 0;
+		}
+		li {
+			padding: 10px;
+			margin-bottom: 10px;
+			background-color: #fff;
+			box-shadow: 0px 0px 10px #ccc;
+			border-radius: 5px;
+			display: flex;
+			align-items: center;
+		}
+		img {
+			max-width: 100%;
+			margin-right: 10px;
+		}
+		a {
+			color: #333;
+			text-decoration: none;
+			font-weight: bold;
+		}
+		a:hover {
+			text-decoration: underline;
+		}
+		.rating {
+			margin-left: auto;
+			font-style: italic;
+			color: #555;
+		}
+	</style>
+</head>
+<body>
+	<h1>Top-Rated Results</h1>
+	<div id="map"></div>
+	<ul id="placesList">
+		{% for place in places %}
+			<li data-lat="{{ place.latitude }}" data-lng="{{ place.longitude }}" data-url="{{ place.url }}">
+				{% if place.photos %}
+					<img src="{{ place.photos[0].getUrl({'maxWidth': 100, 'maxHeight': 100}) }}" alt="{{ place.name }}">
+				{% endif %}
+				<a href="{{ place.url }}" target="_blank">{{ place.name }}</a>
+				<span class="rating">Rating: {{ place.rating }}</span>
+			</li>
+		{% endfor %}
+	</ul>
+	<a href="/">Search Again</a>
+
+	<script>
+		function initMap() {
+			var places = document.querySelectorAll('#placesList li');
+			var mapEl = document.getElementById('map');
+			var centerLatLng = {lat: parseFloat(places[0].getAttribute('data-lat')), lng: parseFloat(places[0].getAttribute('data-lng'))};
+			var map = new google.maps.Map(mapEl, {zoom: 12, center: centerLatLng});
+
+			var infoWindow = new google.maps.InfoWindow();
+
+			places.forEach(function(place) {
+				var latLng = {lat: parseFloat(place.getAttribute('data-lat')), lng: parseFloat(place.getAttribute('data-lng'))};
+				var marker = new google.maps.Marker({position: latLng, map: map});
+
+				var contentString = '<div>' +
+									'<h2>' + place.textContent.trim() + '</h2>' +
+									'<a href="' + place.getAttribute('data-url') + '" target="_blank">View on Google Maps</a>' +
+									'</div>';
+
+				marker.addListener('click', function() {
+					infoWindow.setContent(contentString);
+					infoWindow.open(map, marker);
+				});
+			});
+		}
+	</script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ api_key }}&callback=initMap&style=gray2"></script>
+</body>
+</html>
