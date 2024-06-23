@@ -26,6 +26,10 @@ library(effects)
 ```
 
 **#Load data**
+
+#From NYC OpenData: "List of every shooting incident that occurred in NYC going back to 2006 through the end of the previous calendar year."
+
+#About Page URL: https://data.cityofnewyork.us/Public-Safety/NYPD-Shooting-Incident-Data-Historic-/833y-fsy8/about_data
 ```{r read_in_data, echo=TRUE}
 data_url <- "https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv"
 nyc_data <- read_csv(data_url)
