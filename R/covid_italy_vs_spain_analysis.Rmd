@@ -128,7 +128,7 @@ ggplot(country_sums_growth, aes(x = YearMonth, y = MovingAverage, color = `Count
 
 ```
 
-### Analysis C - Compare Spain and Italy Totals by Month
+### Analysis C - Compare Spain and Italy Seasonality Effects
 ```{r seasonality, echo=TRUE}
 
 #Filter for 2021 and 2022 (the two complete calendar years)
