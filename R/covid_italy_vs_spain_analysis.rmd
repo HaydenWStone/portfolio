@@ -1,0 +1,204 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+#Uses external library(zoo)
+
+---
+title: "Comparison of the COVID Pandemic in Italy and Spain"
+author: "Hayden Stone"
+date: "`r Sys.Date()`"
+output:
+  html_document: 
+    theme: flatly
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**#Import libraries**
+```{r import_libraries, echo=TRUE}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(knitr)
+library(zoo)
+```
+
+**#Load data**
+```{r read_in_data, echo=TRUE}
+data_url <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
+covid_data <- read_csv(data_url)
+```
+
+**#Filter for Spain and Italy**
+```{r filter_countries, echo=TRUE}
+filtered_data <- subset(covid_data, `Country/Region` == "Spain" | `Country/Region` == "Italy")
+```
+
+**#Clean and Aggregate by Month**
+```{r month_totals, echo=TRUE}
+#Select date columns and reshape
+date_columns <- names(filtered_data)[5:ncol(filtered_data)]
+data_long <- filtered_data %>%
+  pivot_longer(cols = all_of(date_columns), names_to = "Date", values_to = "Count")
+
+#Convert the Date column to Date type
+data_long <- data_long %>%
+  mutate(Date = as.Date(Date, format = "%m/%d/%y"))
+
+#Extract year and month
+data_long <- data_long %>%
+  mutate(YearMonth = format(Date, "%Y-%m"))
+
+#Aggregate deaths by Country/Region and YearMonth
+data_aggregated <- data_long %>%
+  group_by(`Country/Region`, YearMonth) %>%
+  summarise(MonthlyCount = sum(Count, na.rm = TRUE)) %>%
+  ungroup()
+```
+
+### Analysis A - Compare Spain and Italy Total Deaths by Month
+```{r make_comparison_table, echo=TRUE}
+#Sum aggregated data by country
+country_sums <- data_aggregated %>%
+  filter(`Country/Region` %in% c("Spain", "Italy"))
+
+#Reshape the data to compare the sums
+comparison_table <- country_sums %>%
+  pivot_wider(names_from = `Country/Region`, values_from = MonthlyCount, names_prefix = "Count_")
+
+#Convert YearMonth to a Date type
+country_sums <- country_sums %>%
+  mutate(YearMonth = as.Date(paste0(YearMonth, "-01")))
+
+#Filter out the partial data month (March 2023)
+country_sums_filtered <- country_sums %>%
+  filter(YearMonth != as.Date("2023-03-01"))
+
+#Make plot
+ggplot(country_sums_filtered, aes(x = YearMonth, y = MonthlyCount, color = `Country/Region`, group = `Country/Region`)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(title = "Monthly Aggregated Deaths in Spain and Italy",
+       x = "Month",
+       y = "Monthly Count",
+       color = "Country/Region") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+### Analysis B- Compare Spain and Italy Growth Rates by Month
+```{r compare_growth_rates, echo=TRUE}
+
+#Calculate month-over-month growth rates
+country_sums_growth <- country_sums_filtered %>%
+  group_by(`Country/Region`) %>%
+  arrange(YearMonth) %>%
+  mutate(GrowthRate = (MonthlyCount - lag(MonthlyCount)) / lag(MonthlyCount) * 100) %>%
+  ungroup()
+country_sums_growth <- country_sums_growth %>%
+  filter(!is.na(GrowthRate) & !is.infinite(GrowthRate))
+
+#Calculate the 3 month moving average
+country_sums_growth <- country_sums_growth %>%
+  group_by(`Country/Region`) %>%
+  arrange(YearMonth) %>%
+  mutate(MovingAverage = zoo::rollapply(GrowthRate, width = 3, FUN = mean, fill = NA, align = 'right')) %>%
+  ungroup()
+country_sums_growth <- country_sums_growth %>%
+  filter(!is.na(MovingAverage))
+
+#Make Plot
+ggplot(country_sums_growth, aes(x = YearMonth, y = MovingAverage, color = `Country/Region`, group = `Country/Region`)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  scale_y_log10() +
+  labs(title = "Moving Average of Month-Over-Month Growth Rate for Spain and Italy (Log Scale)",
+       x = "Month",
+       y = "Growth Rate (%)",
+       color = "Country/Region") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+### Analysis C - Compare Spain and Italy Totals by Month
+```{r seasonality, echo=TRUE}
+
+#Filter for 2021 and 2022 (the two complete calendar years)
+full_two_years <- data_long %>%
+  filter(year(Date) %in% c(2021, 2022))
+
+#Extract the year and month
+full_two_years <- full_two_years %>%
+  mutate(YearMonth = format(Date, "%Y-%m"),
+         Month = month(Date, label = TRUE, abbr = FALSE))
+
+#Aggregate the counts by Country and YearMonth
+full_two_years <- full_two_years %>%
+  group_by(`Country/Region`, YearMonth, Month) %>%
+  summarise(MonthlyCount = sum(Count, na.rm = TRUE)) %>%
+  ungroup()
+
+#Convert YearMonth to a Date type
+full_years <- full_two_years %>%
+  mutate(YearMonth = as.Date(paste0(YearMonth, "-01")))
+
+#Calculate month-over-month growth rate
+country_sums_growth <- full_two_years %>%
+  group_by(`Country/Region`) %>%
+  arrange(YearMonth) %>%
+  mutate(GrowthRate = (MonthlyCount - lag(MonthlyCount)) / lag(MonthlyCount) * 100) %>%
+  filter(!is.na(GrowthRate) & !is.infinite(GrowthRate)) %>%
+  ungroup()
+
+#Convert Month to a factor and 
+country_sums_growth <- country_sums_growth %>%
+  mutate(Month = factor(Month, levels = month.name))
+
+#Make plot
+overall_yearly_avg <- mean(country_sums_growth$GrowthRate, na.rm = TRUE)
+ggplot(country_sums_growth, aes(x = Month, y = GrowthRate)) +
+  geom_boxplot(aes(fill = Month), alpha = 0.5, coef = Inf) +
+  geom_hline(yintercept = overall_yearly_avg, linetype = "dashed", color = "red") +
+  labs(title = "Monthly Growth Rate in Deaths in Spain and Italy (2021 and 2022)",
+       x = "Month",
+       y = "Growth Rate (%)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(size = 6)) +
+  annotate("text", x = 3, y = overall_yearly_avg, label = sprintf("Yearly Avg: %.2f%%", overall_yearly_avg), hjust = 0, vjust = -1, color = "red")
+
+#Make Model
+contrasts(country_sums_growth$Month) <- contr.treatment(n = length(month.name))
+lm_month_dummy <- lm(GrowthRate ~ Month, data = country_sums_growth)
+
+#Summary of model
+summary(lm_month_dummy)
+```
+
+**#Conclusion and Potential Biases**
+
+The cumulative COVID-19 death data and the relative analysis of the trends between Spain and Italy reveal some notable commonalities and differences in the pandemic experience of the two countries.
+
+I chose Spain and Italy as two countries to compare since they have similar population sizes, demographics, and climate, all of which could be potentially significant drivers of disease dynamics.
+
+Analysis A shows that while both Spain and Italy showed largely similar variation in disease dynamics in most months of the pandemic, Italy's cumulative deaths rose at a sharp rate towards the end of 2020, while Spain avoided a similar large rise and maintained a flatter trajectory. After Italy's large spike, cumulative deaths slowed, but continued to rise at a slightly higher rate than Spain. This widening difference could be explained by Italy's slightly larger population or other factors, which further analysis could investigate.
+
+Analysis B shows the month-over-month change in deaths as a percentage in Spain vs Italy. After an obviously very high growth rate from near 0 at the start of the pandemic, both countries experienced relatively similar rises and falls over the ensuing three years, with a general downward trennd over time. This trend was likely a function of the virus becoming less lethal, immunity spreading, and treatment options improving over time.
+
+Analysis C attempts to look potential seasonality effects across Spain and Italy for the two calendar years of complete data, 2021 and 2022. The plot and the model both show that the month of March in both 2021 and 2022 saw a much higher increase in deaths in both Spain and Italy, with a very statistically significant p value of 0.000000145. No other month was particularly significant. What may have driven the disease dynamics in March is beyond the scope of this project. A more robust analysis would look across many more countries and would include a longer time series, if possible.
+
+Potential biases and other confounding effects in in this data may include local reporting of COVID data in particular countries at certain stages of the pandemic (i.e. countries slow to begin disease tracking, countries who abandoned robust tracking, etc.), different standards of reporting deaths attributed to COVID, or other factors. I do believe I have let any personal biases effect my analysis of this data.
+
+
+**#Session Info**
+```{r sessioninfo, echo=TRUE}
+sessionInfo()
+```
+
