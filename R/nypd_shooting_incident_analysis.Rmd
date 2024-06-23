@@ -43,8 +43,7 @@ nyc_data_filtered <- nyc_data_filtered %>%
 nyc_data_filtered <- nyc_data_filtered %>%
   filter(!is.na(VIC_SEX) & VIC_SEX != "" & VIC_SEX != "NULL" & VIC_SEX != "(null)")
 ```
-
-**#Analysis A - Analyze Victim Sex vs Perpetrator Sex**
+### Analysis A - Analyze Victim Sex vs Perpetrator Sex
 ```{r analyze_sex, echo=TRUE}
 #Create contingency table
 counts <- table(nyc_data_filtered$VIC_SEX, nyc_data_filtered$PERP_SEX)
@@ -59,7 +58,7 @@ ggplot(counts_df, aes(Var1, Freq, fill = Var2)) +
   theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
 ```
 
-**#Analysis B - Analyze Race Dynamics**
+### Analysis B - Analyze Race Dynamics
 ```{r analyze_race_bubbles, echo=TRUE}
 #Create contingency table
 counts <- table(nyc_data_filtered$VIC_RACE, nyc_data_filtered$PERP_RACE)
@@ -87,7 +86,7 @@ print(vic_race_freq)
 
 ```
 
-**#Analysis C - Analyze Boro vs Victim Race**
+### Analysis C - Analyze Boro vs Victim Race
 ```{r analyze_boro, echo=TRUE}
 #Create contingency table
 counts <- table(nyc_data_filtered$BORO, nyc_data_filtered$VIC_RACE)
@@ -113,7 +112,7 @@ nyc_map <- map_data("county", region = "new york") %>%
   filter(subregion %in% nyc_counties)
 ```
 
-**#Analysis D - Map Black Victims**
+### Analysis D - Map Black Victims
 ```{r make_black_victim_map, echo=TRUE}
 #Filter data
 nyc_data_filtered_murder <- subset(nyc_data_filtered,VIC_RACE == "BLACK")
@@ -131,7 +130,7 @@ ggplot() +
         legend.key.size = unit(0.4, "cm"))
 ```
 
-**#Analysis E - Map White Hispanic Victims**
+### Analysis E - Map White Hispanic Victims
 ```{r make_white_hispanic_victim_map, echo=TRUE}
 
 #Filter data
@@ -150,7 +149,7 @@ ggplot() +
         legend.key.size = unit(0.4, "cm"))
 ```
 
-**#Analysis F - Analyze "Same Race" Dynamics**
+### Analysis F - Analyze "Same Race" Dynamics
 
 ```{r same_race_analysis, echo=TRUE}
 #Create new SAME_RACE variable for records where VIC_RACE == PERP_RACE
@@ -176,7 +175,7 @@ ggplot(shares_df, aes(x = "", y = Share, fill = as.factor(SAME_RACE))) +
   theme(axis.text.x = element_blank(), axis.ticks = element_blank())
 ```
 
-**#Analysis G - Analyze "Same Race" Dynamics for Shootings Resulting in Murder**
+### Analysis G - Analyze "Same Race" Dynamics for Shootings Resulting in Murder
 
 ```{r same_race_murder_analysis, echo=TRUE}
 
@@ -208,7 +207,7 @@ ggplot(shares_df, aes(x = "", y = Share, fill = Outcome)) +
   theme(axis.text.x = element_blank(), axis.ticks = element_blank())
 ```
 
-**# Analysis H - Model Same Race as a Predictor for Shooting Resulting in a Murder**
+### Analysis H - Model Same Race as a Predictor for Shooting Resulting in a Murder
 
 ```{r create_model, echo=TRUE}
 
