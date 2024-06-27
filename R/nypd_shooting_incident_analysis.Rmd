@@ -1,4 +1,3 @@
-#uses additional external library(maps) and library(effects)
 
 ---
 title: "NYPD Shooting Incidents Analysis"
