@@ -194,7 +194,7 @@ Analysis B shows the month-over-month change in deaths as a percentage in Spain 
 
 Analysis C attempts to look potential seasonality effects across Spain and Italy for the two calendar years of complete data, 2021 and 2022. The plot and the model both show that the month of March in both 2021 and 2022 saw a much higher increase in deaths in both Spain and Italy, with a very statistically significant p value of 0.000000145. No other month was particularly significant. What may have driven the disease dynamics in March is beyond the scope of this project. A more robust analysis would look across many more countries and would include a longer time series, if possible.
 
-Potential biases and other confounding effects in in this data may include local reporting of COVID data in particular countries at certain stages of the pandemic (i.e. countries slow to begin disease tracking, countries who abandoned robust tracking, etc.), different standards of reporting deaths attributed to COVID, or other factors. I do believe I have let any personal biases effect my analysis of this data.
+Potential biases and other confounding effects in in this data may include local reporting of COVID data in particular countries at certain stages of the pandemic (i.e. countries slow to begin disease tracking, countries who abandoned robust tracking, etc.), different standards of reporting deaths attributed to COVID, or other factors.
 
 
 **#Session Info**
