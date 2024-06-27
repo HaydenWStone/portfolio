@@ -3,7 +3,6 @@ output:
   html_document: default
   pdf_document: default
 ---
-#Uses external library(zoo)
 
 ---
 title: "Comparison of the COVID Pandemic in Italy and Spain"
